@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, Users, Wrench, DollarSign, Package, Plus, Search, Phone, Mail, MapPin, Clock, CheckCircle, AlertCircle, Camera, BarChart3, Repeat, Timer, Eye, XCircle, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, CheckCircle, AlertCircle, DollarSign, Plus, LogOut } from 'lucide-react';
 
 // Supabase configuration
 const SUPABASE_URL = 'https://vntympygvscumvmjnhmg.supabase.co';
@@ -244,7 +244,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   const [timeEntries, setTimeEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [cust, job, tech, inv, invoice, equip, recurring, time] = await Promise.all([
         supabaseDB.select('customers', token),
@@ -269,13 +269,13 @@ const MainApp = ({ user, token, onSignOut }) => {
       console.error('Load error:', error);
     }
     setLoading(false);
-  };
+  }, [token]);
 
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [loadData]);
 
   const addCustomer = async (data) => {
     const result = await supabaseDB.insert('customers', { ...data, user_id: user.id }, token);
