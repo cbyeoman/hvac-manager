@@ -1,66 +1,113 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Wrench, DollarSign, Package, Plus, Search, Phone, Mail, MapPin, Clock, CheckCircle, AlertCircle, Camera, BarChart3, Repeat, Timer, Eye, XCircle, LogOut } from 'lucide-react';
 
-// Supabase client setup
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key';
+// Supabase configuration
+const SUPABASE_URL = 'https://vntympygvscumvmjnhmg.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudHltcHlndnNjdW12bWpuaG1nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2OTg5MDUsImV4cCI6MjA4NDI3NDkwNX0.uCvYZlFcqfzgwi2Vnn7hYC36-tNdvqZFN0BmRFf3xks';
 
-// Simple Supabase client
-const supabase = {
-  auth: {
-    signUp: async ({ email, password }) => {
-      const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+// Supabase API helper functions
+const supabaseAuth = {
+  signUp: async (email, password) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
         body: JSON.stringify({ email, password })
       });
-      return await res.json();
-    },
-    signIn: async ({ email, password }) => {
-      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-        body: JSON.stringify({ email, password })
-      });
-      return await res.json();
-    },
-    signOut: async (token) => {
-      await fetch(`${supabaseUrl}/auth/v1/logout`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseKey }
-      });
-    },
-    getUser: async (token) => {
-      const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseKey }
-      });
-      return await res.json();
+      const data = await res.json();
+      return { data, error: data.error || null };
+    } catch (error) {
+      return { data: null, error };
     }
   },
-  from: (table) => ({
-    select: async (columns = '*', token) => {
-      const res = await fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'apikey': supabaseKey }
-      });
-      return { data: await res.json() };
-    },
-    insert: async (data, token) => {
-      const res = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+
+  signIn: async (email, password) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': supabaseKey, 'Prefer': 'return=representation' },
-        body: JSON.stringify(data)
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({ email, password })
       });
-      return { data: await res.json() };
-    },
-    update: async (data, id, token) => {
-      const res = await fetch(`${supabaseUrl}/rest/v1/${table}?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'apikey': supabaseKey, 'Prefer': 'return=representation' },
-        body: JSON.stringify(data)
-      });
-      return { data: await res.json() };
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      return { error };
     }
-  })
+  },
+
+  signOut: async (token) => {
+    try {
+      await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_KEY }
+      });
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  },
+
+  getUser: async (token) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_KEY }
+      });
+      return await res.json();
+    } catch (error) {
+      return { error };
+    }
+  }
+};
+
+const supabaseDB = {
+  select: async (table, token) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'apikey': SUPABASE_KEY }
+      });
+      const data = await res.json();
+      return { data, error: null };
+    } catch (error) {
+      return { data: [], error };
+    }
+  },
+
+  insert: async (table, newData, token) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': SUPABASE_KEY,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(newData)
+      });
+      const data = await res.json();
+      return { data: Array.isArray(data) ? data : [data], error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  },
+
+  update: async (table, id, updates, token) => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': SUPABASE_KEY,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(updates)
+      });
+      const data = await res.json();
+      return { data: Array.isArray(data) ? data : [data], error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  }
 };
 
 const HVACApp = () => {
@@ -70,7 +117,7 @@ const HVACApp = () => {
 
   useEffect(() => {
     if (token) {
-      supabase.auth.getUser(token).then(data => {
+      supabaseAuth.getUser(token).then(data => {
         if (data.id) {
           setUser(data);
         } else {
@@ -87,7 +134,7 @@ const HVACApp = () => {
   }, [token]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut(token);
+    await supabaseAuth.signOut(token);
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -121,7 +168,7 @@ const AuthScreen = ({ setUser, setToken }) => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabaseAuth.signUp(email, password);
         if (error) {
           setError(error.message || 'Sign up failed');
         } else {
@@ -129,7 +176,7 @@ const AuthScreen = ({ setUser, setToken }) => {
           setIsSignUp(false);
         }
       } else {
-        const data = await supabase.auth.signIn({ email, password });
+        const data = await supabaseAuth.signIn(email, password);
         if (data.access_token) {
           localStorage.setItem('token', data.access_token);
           setToken(data.access_token);
@@ -200,14 +247,14 @@ const MainApp = ({ user, token, onSignOut }) => {
   const loadData = async () => {
     try {
       const [cust, job, tech, inv, invoice, equip, recurring, time] = await Promise.all([
-        supabase.from('customers').select('*', token),
-        supabase.from('jobs').select('*', token),
-        supabase.from('technicians').select('*', token),
-        supabase.from('inventory').select('*', token),
-        supabase.from('invoices').select('*', token),
-        supabase.from('equipment').select('*', token),
-        supabase.from('recurring_jobs').select('*', token),
-        supabase.from('time_entries').select('*', token)
+        supabaseDB.select('customers', token),
+        supabaseDB.select('jobs', token),
+        supabaseDB.select('technicians', token),
+        supabaseDB.select('inventory', token),
+        supabaseDB.select('invoices', token),
+        supabaseDB.select('equipment', token),
+        supabaseDB.select('recurring_jobs', token),
+        supabaseDB.select('time_entries', token)
       ]);
 
       setCustomers(cust.data || []);
@@ -226,12 +273,12 @@ const MainApp = ({ user, token, onSignOut }) => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, [token]);
 
   const addCustomer = async (data) => {
-    const result = await supabase.from('customers').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('customers', { ...data, user_id: user.id }, token);
     if (result.data) {
       setCustomers([...customers, result.data[0]]);
       return true;
@@ -240,7 +287,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const addJob = async (data) => {
-    const result = await supabase.from('jobs').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('jobs', { ...data, user_id: user.id }, token);
     if (result.data) {
       setJobs([...jobs, result.data[0]]);
       return true;
@@ -249,15 +296,15 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const updateJob = async (id, updates) => {
-    const result = await supabase.from('jobs').update(updates, id, token);
+    const result = await supabaseDB.update('jobs', id, updates, token);
     if (result.data) {
       setJobs(jobs.map(j => j.id === id ? result.data[0] : j));
-      await loadData(); // Refresh to get latest
+      await loadData();
     }
   };
 
   const addTechnician = async (data) => {
-    const result = await supabase.from('technicians').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('technicians', { ...data, user_id: user.id }, token);
     if (result.data) {
       setTechnicians([...technicians, result.data[0]]);
       return true;
@@ -266,7 +313,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const addEquipment = async (data) => {
-    const result = await supabase.from('equipment').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('equipment', { ...data, user_id: user.id }, token);
     if (result.data) {
       setEquipment([...equipment, result.data[0]]);
       return true;
@@ -275,7 +322,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const addRecurring = async (data) => {
-    const result = await supabase.from('recurring_jobs').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('recurring_jobs', { ...data, user_id: user.id }, token);
     if (result.data) {
       setRecurringJobs([...recurringJobs, result.data[0]]);
       return true;
@@ -284,7 +331,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const addInventory = async (data) => {
-    const result = await supabase.from('inventory').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('inventory', { ...data, user_id: user.id }, token);
     if (result.data) {
       setInventory([...inventory, result.data[0]]);
       return true;
@@ -293,7 +340,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const addInvoice = async (data) => {
-    const result = await supabase.from('invoices').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('invoices', { ...data, user_id: user.id }, token);
     if (result.data) {
       setInvoices([...invoices, result.data[0]]);
       return true;
@@ -302,14 +349,14 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const updateInvoice = async (id, updates) => {
-    const result = await supabase.from('invoices').update(updates, id, token);
+    const result = await supabaseDB.update('invoices', id, updates, token);
     if (result.data) {
       setInvoices(invoices.map(i => i.id === id ? result.data[0] : i));
     }
   };
 
   const addTimeEntry = async (data) => {
-    const result = await supabase.from('time_entries').insert({ ...data, user_id: user.id }, token);
+    const result = await supabaseDB.insert('time_entries', { ...data, user_id: user.id }, token);
     if (result.data) {
       setTimeEntries([...timeEntries, result.data[0]]);
       return result.data[0];
@@ -318,7 +365,7 @@ const MainApp = ({ user, token, onSignOut }) => {
   };
 
   const updateTimeEntry = async (id, updates) => {
-    const result = await supabase.from('time_entries').update(updates, id, token);
+    const result = await supabaseDB.update('time_entries', id, updates, token);
     if (result.data) {
       setTimeEntries(timeEntries.map(e => e.id === id ? result.data[0] : e));
     }
